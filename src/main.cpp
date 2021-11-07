@@ -396,6 +396,7 @@ static window the_window = {};
 static bool RepeatEnabled = true;
 static int RepeatInMinutes = 60;
 static int RepeatWindowInMinutes = 10;
+static bool SkipCurrentWindow = false;
 
 static file_time RepeatTimeOffset = {};
 
@@ -428,13 +429,20 @@ static void SetRepeatDisabled()
   RepeatEnabled = false;
 }
 
-static void SetRepeatOffsetToNow() {
+static void SetRepeatOffsetToNow()
+{
   GetSystemTimeAsFileTime(&RepeatTimeOffset.Win);
   FileTimeToLocalFileTime(&RepeatTimeOffset.Win, &RepeatTimeOffset.Win);
 }
 
-static void SetRepeatOffsetReset() {
+static void SetRepeatOffsetReset()
+{
   RepeatTimeOffset = {};
+}
+
+static void SetSkipCurrentWindow()
+{
+  SkipCurrentWindow = true;
 }
 
 static void Paint() {
@@ -458,6 +466,11 @@ static void Paint() {
     ShowTimer = true;
   }
 
+  if (SkipCurrentWindow)
+  {
+    ShowWindow(the_window.Handle, SW_HIDE);
+  }
+
   int PrevOpacity = the_window.Opacity;
 
   if (ShowTimer) {
@@ -472,6 +485,7 @@ static void Paint() {
     else {
       the_window.Opacity = 0;
       ShowWindow(the_window.Handle, SW_HIDE);
+      SkipCurrentWindow = false;
     }
   }
 
@@ -548,6 +562,7 @@ LRESULT CALLBACK TrayWindowCallback(HWND Window, UINT Message, WPARAM WParam, LP
 
                   Win32AddMenuItem(Menu, "Set repeat offset to now ", false, true, SetRepeatOffsetToNow);
                   Win32AddMenuItem(Menu, "Reset repeat offset", false, true, SetRepeatOffsetReset);
+                  Win32AddMenuItem(Menu, "Skip", false, true, SetSkipCurrentWindow);
                   Win32AddSeparator(Menu);
                   Win32AddMenuItem(Menu, "Repeat", false, false, 0);
                   Win32AddMenuItem(Menu, "Every 2 hours", RepeatEnabled && RepeatInMinutes == 120, true, SetRepeatMinute120);
