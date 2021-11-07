@@ -431,6 +431,16 @@ static void SetRepeatDisabled()
   RepeatEnabled = false;
 }
 
+static void SetRepeatWindowTo10Minutes()
+{
+  RepeatWindowInMinutes = 10;
+}
+
+static void SetRepeatWindowTo5Minutes()
+{
+  RepeatWindowInMinutes = 5;
+}
+
 static void SetRepeatOffsetToNow()
 {
   GetSystemTimeAsFileTime(&RepeatTimeOffset.Win);
@@ -574,6 +584,10 @@ LRESULT CALLBACK TrayWindowCallback(HWND Window, UINT Message, WPARAM WParam, LP
                   Win32AddMenuItem(Menu, "Set repeat offset to now ", false, true, SetRepeatOffsetToNow);
                   Win32AddMenuItem(Menu, "Reset repeat offset", false, true, SetRepeatOffsetReset);
                   Win32AddMenuItem(Menu, "Skip", SkipCurrentWindow, true, ToggleSkipCurrentWindow);
+                  Win32AddSeparator(Menu);
+                  Win32AddMenuItem(Menu, "Break time", false, false, 0);
+                  Win32AddMenuItem(Menu, "10 Minutes", RepeatWindowInMinutes == 10, true, SetRepeatWindowTo10Minutes);
+                  Win32AddMenuItem(Menu, "5 Minutes", RepeatWindowInMinutes == 5, true, SetRepeatWindowTo5Minutes);
                   Win32AddSeparator(Menu);
                   Win32AddMenuItem(Menu, "Repeat", false, false, 0);
                   Win32AddMenuItem(Menu, "Every 2 hours", RepeatEnabled && RepeatInMinutes == 120, true, SetRepeatMinute120);
