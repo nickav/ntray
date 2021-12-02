@@ -196,53 +196,6 @@ bool Win32ResizeDIBSection(win32_dib_section &This, i32 Width, i32 Height)
     return(Result);
 }
 
-void Win32BlitWholeDIBToDC(win32_dib_section &This, HDC ToDC)
-{
-    if(Win32IsInitialized(This))
-    {
-        HDC FromDC = This.DrawDC;
-        BitBlt(ToDC, 0, 0, This.Width, This.Height, FromDC, 0, 0, SRCCOPY);
-    }
-}
-
-void Win32BlitWholeDIBToWindow(win32_dib_section &This, HWND Window)
-{
-    if(Win32IsInitialized(This))
-    {
-        HDC ToDC = GetDC(Window);
-        Win32BlitWholeDIBToDC(This, ToDC);
-        ReleaseDC(Window, ToDC);
-    }
-}
-
-void Win32BlitWholeDIBToDCAtXY(win32_dib_section &This, HDC ToDC, i32 X, i32 Y)
-{
-    if(Win32IsInitialized(This))
-    {
-        HDC FromDC = This.DrawDC;
-        BitBlt(ToDC, X, Y, This.Width, This.Height, FromDC, 0, 0, SRCCOPY);
-    }
-}
-
-void Win32BlitDIBToDC(win32_dib_section &This, i32 FromX, i32 FromY, i32 Width, i32 Height, HDC ToDC, i32 ToX, i32 ToY)
-{
-    if(Win32IsInitialized(This))
-    {
-        if(Width > This.Width)
-        {
-            Width = This.Width;
-        }
-
-        if(Height > This.Height)
-        {
-            Height = This.Height;
-        }
-
-        HDC FromDC = This.DrawDC;
-        BitBlt(ToDC, ToX, ToY, Width, Height, FromDC, FromX, FromY, SRCCOPY);
-    }
-}
-
 static bool Win32RegisterWindowClass(char *Name, HINSTANCE HInstance, WNDPROC Callback, DWORD Style) {
   WNDCLASSEX WindowClass = {sizeof(WindowClass)};
   WindowClass.style = Style;
@@ -288,7 +241,7 @@ GetPixelsPerLine(HDC DC)
     return FontMetric.tmHeight;
 }
 
-static void DropShadowDraw(HDC DrawDC, RECT &TextRect, char *Text)
+static void DrawTextDropShadow(HDC DrawDC, RECT &TextRect, char *Text)
 {
     TextRect.top += 1;
     TextRect.left += 1;
@@ -431,6 +384,11 @@ static void SetRepeatDisabled()
   RepeatEnabled = false;
 }
 
+static void SetRepeatWindowTo15Minutes()
+{
+  RepeatWindowInMinutes = 15;
+}
+
 static void SetRepeatWindowTo10Minutes()
 {
   RepeatWindowInMinutes = 10;
@@ -539,10 +497,10 @@ static void Paint() {
 
   HGDIOBJ OldFont = SelectObject(DrawDC, MainFont);
 
-  DropShadowDraw(DrawDC, TextRect, Line0);
+  DrawTextDropShadow(DrawDC, TextRect, Line0);
   TextRect.top += GetPixelsPerLine(DrawDC);
   SelectObject(DrawDC, TimeFont);
-  DropShadowDraw(DrawDC, TextRect, Line1);
+  DrawTextDropShadow(DrawDC, TextRect, Line1);
 
   SelectObject(DrawDC, OldFont);
 
@@ -586,6 +544,7 @@ LRESULT CALLBACK TrayWindowCallback(HWND Window, UINT Message, WPARAM WParam, LP
                   Win32AddMenuItem(Menu, "Skip", SkipCurrentWindow, true, ToggleSkipCurrentWindow);
                   Win32AddSeparator(Menu);
                   Win32AddMenuItem(Menu, "Break time", false, false, 0);
+                  Win32AddMenuItem(Menu, "15 Minutes", RepeatWindowInMinutes == 15, true, SetRepeatWindowTo15Minutes);
                   Win32AddMenuItem(Menu, "10 Minutes", RepeatWindowInMinutes == 10, true, SetRepeatWindowTo10Minutes);
                   Win32AddMenuItem(Menu, "5 Minutes", RepeatWindowInMinutes == 5, true, SetRepeatWindowTo5Minutes);
                   Win32AddSeparator(Menu);
@@ -663,14 +622,31 @@ LRESULT CALLBACK TrayWindowCallback(HWND Window, UINT Message, WPARAM WParam, LP
   return(Result);
 }
 
+static i32 WindowWidth = 1000;
+static i32 WindowHeight = 150;
+
 LRESULT CALLBACK WindowCallback(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam) {
+  switch (Message) {
+    case WM_DISPLAYCHANGE: {
+      int ScreenWidth = GetSystemMetrics(SM_CXSCREEN);
+      int ScreenHeight = GetSystemMetrics(SM_CYSCREEN);
+
+      int X = 0;
+      int Y = ScreenHeight - WindowHeight;
+      int Width = WindowWidth;
+      int Height = WindowHeight;
+
+      MoveWindow(Window, X, Y, Width, Height, false);
+    } break;
+  }
+
   return DefWindowProc(Window, Message, WParam, LParam);
 }
 
 static HWND TrayWindow = 0;
 
 int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
-  SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE);
+  SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 
   Win32RegisterWindowClass(TrayWindowClassName, GetModuleHandle(0), TrayWindowCallback);
 
@@ -680,9 +656,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
 
   int ScreenWidth = GetSystemMetrics(SM_CXSCREEN);
   int ScreenHeight = GetSystemMetrics(SM_CYSCREEN);
-
-  i32 WindowWidth = 1000;
-  i32 WindowHeight = 150;
 
   Win32ResizeDIBSection(CountdownDIBSection, WindowWidth, WindowHeight);
 

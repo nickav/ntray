@@ -14,7 +14,10 @@ set exe_name=ntray.exe
 if not exist %build_folder% (mkdir %build_folder%)
 
 pushd %build_folder%
-  cl /MD -DDEBUG=1 /Od -nologo %src_file% /link -subsystem:windows user32.lib gdi32.lib shell32.lib -incremental:no -opt:ref -OUT:%exe_name%
+  rc -nologo ..\assets\ntray.rc
+  move ..\assets\ntray.res .\ntray.res
+
+  cl /MD -DDEBUG=1 /Od -nologo %src_file% /link -subsystem:windows ntray.res user32.lib gdi32.lib shell32.lib -incremental:no -opt:ref -OUT:%exe_name%
 
   IF %errorlevel% NEQ 0 (popd && goto end)
 
